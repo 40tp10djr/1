@@ -1,8 +1,5 @@
 """
 토스증권 Open API에서 계좌 평가손익 / 보유종목을 가져오는 스크립트.
-
-★ 반드시 본인 컴퓨터(로컬)에서 실행하세요. Claude 클라우드 환경에서는
-  금융기관 API 도메인으로 나가는 네트워크가 막혀 있어 동작하지 않습니다.
 """
 import os
 import sys
@@ -21,11 +18,19 @@ HOLDINGS_PATH = "/v1/accounts/holdings"
 def get_access_token(client_id: str, client_secret: str) -> str:
     resp = requests.post(
         BASE_URL + TOKEN_PATH,
-        auth=(client_id, client_secret),  # HTTP Basic Auth 방식
         headers={"Content-Type": "application/x-www-form-urlencoded"},
-        data={"grant_type": "client_credentials"},
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        },
         timeout=10,
     )
+    if not resp.ok:
+        print(f"토큰 발급 실패: status={resp.status_code}", file=sys.stderr)
+        print(f"응답 내용: {resp.text}", file=sys.stderr)
+        print(f"보낸 client_id 길이={len(client_id)}, client_secret 길이={len(client_secret)}", file=sys.stderr)
+        print(f"client_id 앞3자리/뒤3자리: {client_id[:3]}...{client_id[-3:]}", file=sys.stderr)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
@@ -36,6 +41,9 @@ def get_holdings(access_token: str, account_no: str):
         "X-Tossinvest-Account": account_no,
     }
     resp = requests.get(BASE_URL + HOLDINGS_PATH, headers=headers, timeout=10)
+    if not resp.ok:
+        print(f"보유종목 조회 실패: status={resp.status_code}", file=sys.stderr)
+        print(f"응답 내용: {resp.text}", file=sys.stderr)
     resp.raise_for_status()
     return resp.json()
 
